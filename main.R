@@ -1,15 +1,16 @@
 library(dplyr)
 
 # Some global parameters for the problem
-seed   <- 15; 
-A_y    <- 100;
-B_x    <- 500;
-R      <- 5;
+seed   <- 11
+A_y    <- 10;
+B_x    <- 10;
+R      <- 10;
 g      <- 9.81;
 pop    <- 100;
-remove <- 0.1;
+remove <- 0.3;
 generations <- 100;
-mutation_size <- 5;
+mutation_size <- 0.0005;
+descending <- TRUE; 
 
 set.seed(seed)
 
@@ -123,8 +124,8 @@ fitness_function_euc <- function(genotype){
     second_coordinate <- c(resolution_gap * height_index, genotype_full[height_index + 1]); 
     
     # calculate the length of the segment
-    distance <- ((first_coordinate[1] - second_coordinate[1])**2) +
-      ((first_coordinate[2] + second_coordinate[2])**2);
+    distance <- sqrt(((first_coordinate[1] - second_coordinate[1])**2) +
+      ((first_coordinate[2] - second_coordinate[2])**2));
     
     # and add to the total distance
     total_distance <- total_distance + distance;
@@ -143,8 +144,9 @@ fitness_function <- function(population){
 # perform selection
 selection <- function(population, number_to_remove){
   fitnesses <- fitness_function(population);
-  fitness_order <- order(fitnesses, decreasing = TRUE);
-  new_population <- population[, fitness_order][, (number_to_remove + 1):(ncol(population))]
+  fitness_order <- order(fitnesses, decreasing = descending);
+  new_population <- population[, fitness_order];
+  new_population <- new_population[ , (number_to_remove + 1):(ncol(new_population))];
   return(new_population)
 }
 
@@ -160,12 +162,20 @@ for (i in 1:generations){
     selection(number_to_remove = as.integer(remove * pop)); 
   
   fitest <- as.vector(current_population[, 1]);
-  fitnesses <-  append(fitnesses, fitness_function_euc(fitest));
+  fitest_fitness <- fitness_function_euc(fitest); 
+  fitnesses <-  append(fitnesses, fitest_fitness);
   
-  print(paste0("Current Fitness: ", fitness_function_euc(fitest)));
-  plot(1:length(fitest), fitest)
+  if (i == 1){
+    initial_fitness <- as.numeric(fitest_fitness); 
+  }
+  
+  print(paste0("Current Fitness: ", fitest_fitness));
 }
 plot(1:length(fitest), fitest)
 plot(1:length(fitnesses), fitnesses)
+
+print("====================================")
+print(paste0("Inital Fitness: ", initial_fitness))
+print(paste0("Final Fitness : ", fitest_fitness))
 
 

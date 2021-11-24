@@ -1,33 +1,28 @@
-fitness_single_genotype <- function(genotype){
-  genotype <- as.vector(genotype); 
+fitness_function_euc <- function(genotype){
+  genotype_full  <- c(A_y, genotype, 0);
+  resolution_gap <- B_x / (length(genotype_full) - 1); 
   
-  coordinates <- matrix(c(0, A_y), nrow = 2, ncol = 1);
-  velocities <- c(0);
+  total_distance <- 0;
   
-  total_time <- 0; 
-  
-  for (segment_index in 1:(length(genotype) + 1)){
-    first_coordinate  <- coordinates[, segment_index];
-    second_coordinate <- matrix(c(segment_index * (B_x / (R + 1)),genotype[segment_index]));
+  # for each segment of the approximate curve
+  for (height_index in 1:(length(genotype_full) - 1)){
+    #get the coordinates of the start and end of the segment
+    first_coordinate  <- c(resolution_gap * (height_index - 1), genotype_full[height_index]); 
+    second_coordinate <- c(resolution_gap * height_index, genotype_full[height_index + 1]); 
     
-    if (segment_index == (length(genotype) + 1)){
-      second_coordinate[2, 1] <- 0;
-    }
+    print("========")
+    print(first_coordinate)
+    print(second_coordinate)
     
-    coordinates <- cbind(coordinates, second_coordinate);
+    # calculate the length of the segment
+    distance <- sqrt(((first_coordinate[1] - second_coordinate[1])**2) +
+                       ((first_coordinate[2] - second_coordinate[2])**2));
     
-    distance <- sqrt(((first_coordinate[2] - second_coordinate[2])**2) + ((first_coordinate[1] - second_coordinate[1])**2));
-    theta <- atan((second_coordinate[1] - first_coordinate[1]) / (first_coordinate[2] - second_coordinate[2]));
+    print(distance)
     
-    acceleration <- g * cos(theta);
-    
-    initial_velocity <- velocities[segment_index]; 
-    final_velocity <- sqrt((initial_velocity**2) + (2 * acceleration * distance));
-    
-    velocities <- append(velocities, final_velocity); 
-    
-    time_taken <- (final_velocity - initial_velocity) / acceleration; 
-    total_time <- total_time + time_taken; 
+    # and add to the total distance
+    total_distance <- total_distance + distance;
+
   }
-  return(total_time)
+  return(total_distance)
 }
