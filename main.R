@@ -1,18 +1,17 @@
 library(dplyr)
 
 # Some global parameters for the problem
-seed   <- 11
+
 A_y    <- 10;
-B_x    <- 10;
-R      <- 10;
+B_x    <- 40;
+R      <- 20;
 g      <- 9.81;
-pop    <- 100;
-remove <- 0.3;
-generations <- 100;
-mutation_size <- 0.0005;
+pop    <- 10000;
+remove <- 0.5;
+generations <- 1000;
+mutation_size <- 0.00007;
 descending <- TRUE; 
 
-set.seed(seed)
 
 # generate a population from the uniform distribution
 initial_population_random <- function(A_y, genotype_length, number_of_genotypes){
@@ -74,69 +73,48 @@ crossover_basic <- function(population, number_of_offspring){
 }
 
 # apply fitness function to a single genotype (eom derived)
+
 fitness_function_eom <- function(genotype){
-  genotype <- as.vector(genotype); 
+  # add the first and last height to the genotype
+  complete_genotype <- c(A_y, genotype, 0);
   
-  coordinates <- matrix(c(0, A_y), nrow = 2, ncol = 1);
-  velocities <- c(0);
+  # calculate the drop in height from A_y to each height
+  height_drop <- abs(A_y - complete_genotype);
   
-  total_time <- 0; 
+  # determine the velocities (loss in GPE is gain in KE)
+  velocities <- sqrt(2 * height_drop * g);
+  total_time <- 0;
   
+  # this is the length of the gap between heights
+  x_diff <- abs(B_x / (length(genotype) + 1));
+  
+  # for each edge in our curve
   for (segment_index in 1:(length(genotype) + 1)){
-    first_coordinate  <- coordinates[, segment_index];
-    second_coordinate <- matrix(c(segment_index * (B_x / (R + 1)),genotype[segment_index]));
+    # calculate the difference in height between the two heights of the segment
+    y_diff <- abs(complete_genotype[segment_index] - complete_genotype[segment_index + 1]);
     
-    if (segment_index == (length(genotype) + 1)){
-      second_coordinate[2, 1] <- 0;
-    }
+    # get the coordinates of the segment
+    first_coordinate  <- c(x_diff * (segment_index - 1),  complete_genotype[segment_index]);
+    second_coordinate <- c(x_diff * (segment_index),  complete_genotype[segment_index + 1]);
     
-    coordinates <- cbind(coordinates, second_coordinate);
+    # calculate the distance between the coordinates
+    distance <- sqrt(sum(abs(first_coordinate - second_coordinate)**2));
     
-    distance <- sqrt(((first_coordinate[2] - second_coordinate[2])**2) + ((first_coordinate[1] - second_coordinate[1])**2));
-    theta <- atan((second_coordinate[1] - first_coordinate[1]) / (first_coordinate[2] - second_coordinate[2]));
+    # calculate acceleration in the direction of the segment 
+    acceleration <- g * (y_diff / x_diff); 
     
-    acceleration <- g * cos(theta);
-    
-    initial_velocity <- velocities[segment_index] * theta; 
-    final_velocity <- sqrt((initial_velocity**2) + (2 * acceleration * distance));
-    
-    velocities <- append(velocities, final_velocity); 
-    
-    time_taken <- (final_velocity - initial_velocity) / acceleration; 
-    total_time <- total_time + time_taken; 
+    # determine the time according to the equations of motion
+    total_time <- total_time + ((2 * distance) / (velocities[segment_index] + velocities[segment_index + 1]));
+
   }
-  
-  velocities <<- velocities; 
-  
   return(total_time)
 }
 
-fitness_function_euc <- function(genotype){
-  genotype_full  <- c(A_y, genotype, 0);
-  resolution_gap <- B_x / (length(genotype_full) - 1); 
-  
-  total_distance <- 0;
-  
-  # for each segment of the approximate curve
-  for (height_index in 1:(length(genotype_full) - 1)){
-    #get the coordinates of the start and end of the segment
-    first_coordinate  <- c(resolution_gap * (height_index - 1), genotype_full[height_index]); 
-    second_coordinate <- c(resolution_gap * height_index, genotype_full[height_index + 1]); 
-    
-    # calculate the length of the segment
-    distance <- sqrt(((first_coordinate[1] - second_coordinate[1])**2) +
-      ((first_coordinate[2] - second_coordinate[2])**2));
-    
-    # and add to the total distance
-    total_distance <- total_distance + distance;
-  }
-  return(total_distance)
-}
 
 # calculate fitness euclidean
 fitness_function <- function(population){
   fitnesses <- apply(population, MARGIN = 2, FUN = function(genotype){
-    return(fitness_function_euc(genotype))
+    return(fitness_function_eom(genotype))
   })
   return(fitnesses)
 }
@@ -154,6 +132,9 @@ initial_population <- initial_population_random(A_y = A_y, genotype_length = R, 
 current_population <- initial_population; 
 
 fitnesses <- c();
+
+start.time <- Sys.time();
+
 for (i in 1:generations){
   print(paste0("Current Generation: ", i, "/", generations))
   current_population <- current_population %>% 
@@ -162,20 +143,24 @@ for (i in 1:generations){
     selection(number_to_remove = as.integer(remove * pop)); 
   
   fitest <- as.vector(current_population[, 1]);
-  fitest_fitness <- fitness_function_euc(fitest); 
+  fitest_fitness <- fitness_function_eom(fitest); 
   fitnesses <-  append(fitnesses, fitest_fitness);
   
   if (i == 1){
     initial_fitness <- as.numeric(fitest_fitness); 
+    initial_member <- fitest; 
   }
   
   print(paste0("Current Fitness: ", fitest_fitness));
 }
-plot(1:length(fitest), fitest)
-plot(1:length(fitnesses), fitnesses)
 
+plot(1:length(initial_member), initial_member, main = "Fitest Member of First Generation")
+plot(1:length(fitest), fitest, type = "l", main = "Fitest Member of Final Generation")
+plot(1:length(fitnesses), fitnesses, main = "Fitness of Best Member in Each Generation")
 print("====================================")
-print(paste0("Inital Fitness: ", initial_fitness))
-print(paste0("Final Fitness : ", fitest_fitness))
-
+print(paste0("Elapsed Time (seconds): ", Sys.time() - start.time))
+print("====================================")
+print(paste0("Inital Best Fitness: ", initial_fitness))
+print(paste0("Final Best Fitness : ", fitest_fitness))
+print("====================================")
 
