@@ -6,7 +6,7 @@ A_y    <- 10;
 B_x    <- 40;
 R      <- 20;
 g      <- 9.81;
-pop    <- 10000;
+pop    <- 500;
 remove <- 0.5;
 generations <- 1000;
 mutation_size <- 0.00007;
@@ -109,7 +109,6 @@ fitness_function_eom <- function(genotype){
   }
   return(total_time)
 }
-
 
 # calculate fitness euclidean
 fitness_function <- function(population){
